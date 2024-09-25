@@ -1,64 +1,107 @@
 import struct
 from copy import copy
-from dataclasses import dataclass
 from enum import StrEnum
 from functools import cached_property
 from typing import Callable, Literal, cast
 
+from packman.result import UnpackResult
+
+type ByteOrderName = Literal["none", "native", "native_aligned", "little", "big", "network"]
+
 
 class ByteOrder(StrEnum):
-    # TODO: Support other byteorders, size, alignment formats
-    NATIVE = "@"
+    NONE = ""
+    NATIVE = "="
+    NATIVE_ALIGNED = "@"
     LITTLE = "<"
     BIG = ">"
+    NETWORK = "!"
 
-
-@dataclass
-class UnpackResult[*T]:
-    values: tuple[*T]
-    rest: bytes
-
-    def unwrap(self) -> tuple[*T, bytes]:
-        return *self.values, self.rest
+    @classmethod
+    def from_name(
+        cls: type["ByteOrder"],
+        name: ByteOrderName,
+    ) -> "ByteOrder":
+        return {
+            "none": cls.NONE,
+            "native": cls.NATIVE,
+            "native_aligned": cls.NATIVE_ALIGNED,
+            "little": cls.LITTLE,
+            "big": cls.BIG,
+            "network": cls.NETWORK,
+        }[name]
 
 
 class PackFormat[*T]:
+    """Basic binary packing format."""
+
     fmt: str
-    byteorder: ByteOrder = ByteOrder.NATIVE
+    byteorder: ByteOrder = ByteOrder.NONE
 
     def __init__(
-        self, byteorder: ByteOrder | Literal["little", "big", "native"] = "native"
+        self,
+        byteorder: ByteOrder | ByteOrderName = ByteOrder.NONE,
     ) -> None:
         if isinstance(byteorder, ByteOrder):
             self.byteorder = byteorder
         else:
-            self.byteorder = {
-                "little": ByteOrder.LITTLE,
-                "big": ByteOrder.BIG,
-                "native": ByteOrder.NATIVE,
-            }[byteorder]
+            self.byteorder = ByteOrder.from_name(byteorder)
 
     @cached_property
     def size(self) -> int:
-        return struct.calcsize(self.fmt)
+        return struct.calcsize(
+            f"{self.byteorder if self.byteorder != ByteOrder.NONE else ByteOrder.NATIVE_ALIGNED}{self.fmt}"
+        )
 
     def unpack(self, data: bytes) -> UnpackResult[*T]:
-        fmt = f"{self.byteorder}{self.fmt}"
+        """
+        Unpacks data into an UnpackResult object.
+        >>> from packman import U8
+        >>> U8().unpack(b"\x01").unwrap()
+        (1, b'')
+        """
+        fmt = f"{self.byteorder if self.byteorder != ByteOrder.NONE else ByteOrder.NATIVE_ALIGNED}{self.fmt}"
         values = struct.unpack(fmt, data[: self.size])
         rest = data[self.size :]
         return UnpackResult(values, rest)
 
     def pack(self, *values: *T) -> bytes:
+        """
+        Packs values into bytes.
+        >>> from packman import U8
+        >>> U8().pack(1).hex()
+        '01'
+        """
         return struct.pack(self.fmt, *values)
 
     def __add__[*U](self, other: "PackFormat[*U]") -> "PackFormat[(*T, *U)]":
+        """
+        Describes the concatenation of two formats.
+        >>> from packman import U8
+        >>> (U8() + U8()).fmt
+        'BB'
+        >>> (U8() + U8()).unpack(b"\x01\x02").unwrap()
+        (1, 2, b'')
+        """
         new_format = copy(self)
-        new_format.fmt = (
-            f"{self.fmt}{other.byteorder if self.byteorder != other.byteorder else ''}{other.fmt}"
-        )
+        match new_format.byteorder, other.byteorder:
+            case _, ByteOrder.NONE:
+                new_format.fmt = f"{self.fmt}{other.fmt}"
+            case byteorder, new_byteorder if byteorder != new_byteorder:
+                new_format.fmt = f"{other.fmt}{new_byteorder}{self.fmt}"
+            case _, _:
+                new_format.fmt = f"{self.fmt}{other.fmt}"
         return cast("PackFormat[(*T, *U)]", new_format)
 
     def then[*U](self, mapper: Callable[[*T], "PackFormat[*U]"]) -> "PackFormat[(*T, *U)]":
+        """
+        Chains two formats, where the second format is dynamically derived from the result of the previous format.
+
+        >>> from packman import U8, Bytes
+        >>> U8().then(lambda length: Bytes(length)).unpack(b"\x01\x02").unwrap()
+        (1, b'\\x02', b'')
+        """
+
         class Chainedformat(PackFormat):
             def __init__(self, first: PackFormat, mapper: Callable):
                 super().__init__()
@@ -88,4 +131,5 @@ class PackFormat[*T]:
         return Chainedformat(self, mapper)
 
     def __or__[*U](self, mapper: Callable[[*T], "PackFormat[*U]"]) -> "PackFormat[(*T, *U)]":
+        """Shorthand for `then`"""
         return self.then(mapper)

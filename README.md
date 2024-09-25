@@ -33,13 +33,38 @@ print(a, b)  # 1 2
 
 # Using PackMan
 fmt = U8() + U8()
-a, b, _ = fmt.unpack(data).unwrap()
+a, b, _ = fmt.unpack(data).expand()
 print(a, b)  # 1 2
 ```
 
 PackMan offers improved type safety: returned value from struct.unpack has type tuple[Any, ...], while PackMan's return value has the more specific type tuple[int, int, bytes], providing better type information and reducing the risk of type-related errors.
 
 ![type_demo](/images/type_demo.png)
+
+### Expand/Unwrap the Result
+
+`unpack` will return an `UnpackResult` object. There are several ways to get the data:
+
+```python
+data = b'\x01\x02\x03'
+fmt = U8() + U8()
+
+# result only:
+a, b = fmt.unpack(data).values  # 1 2
+
+# remaining data only:
+rest = fmt.unpack(data).rest  # b'\x03'
+
+# result and remaining data (rest):
+result, rest = fmt.unpack(data).unwrap()  # (1, 2), b'\x03'
+# or
+(a, b), rest = fmt.unpack(data).unwrap()
+
+# expanded result and remaining data:
+a, b, rest = fmt.unpack(data).expand()  # 1, 2, b'\x03'
+```
+
+You will find `.expand()` very useful in simplifying the syntax if you need to unpack individual results and keep working on the remaining data.
 
 ### Packing and Unpacking
 
@@ -55,7 +80,7 @@ packed = fmt.pack(1, 2, b"a")
 print(packed)  # b'\x01\x02a'
 
 # Unpacking
-unpacked = fmt.unpack(packed).unwrap()
+unpacked = fmt.unpack(packed).expand()
 print(unpacked)  # (1, 2, b'a', b'')
 ```
 
@@ -75,7 +100,7 @@ packed = fmt.pack(3, 1, b"\x02\x03")
 print(packed)  # b'\x03\x01\x02\x03'
 
 # Unpacking
-unpacked = fmt.unpack(packed).unwrap()
+unpacked = fmt.unpack(packed).expand()
 print(unpacked)  # (3, 1, b'\x02\x03', b'')
 ```
 
@@ -90,7 +115,7 @@ from collections.abc import Iterator
 def parse_ble_advertisement(data: bytes) -> Iterator[tuple[int, int, bytes]]:
     fmt = U8() | (lambda length: U8() + Bytes(length - 1))
     while data:
-        length, dtype, payload, data = fmt.unpack(data).unwrap()
+        length, dtype, payload, data = fmt.unpack(data).expand()
         yield length, dtype, payload
 
 # Usage
