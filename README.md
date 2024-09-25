@@ -41,7 +41,7 @@ PackMan offers improved type safety: returned value from struct.unpack has type 
 
 ![type_demo](/images/type_demo.png)
 
-### Expand/Unwrap the Result
+### Working with `UnpackResult`
 
 `unpack` will return an `UnpackResult` object. There are several ways to get the data:
 
