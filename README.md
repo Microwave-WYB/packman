@@ -50,18 +50,24 @@ data = b'\x01\x02\x03'
 fmt = U8() + U8()
 
 # result only:
-a, b = fmt.unpack(data).values  # 1 2
+a, b = fmt.unpack(data).values
+print(a, b)  # 1 2
 
 # remaining data only:
-rest = fmt.unpack(data).rest  # b'\x03'
+rest = fmt.unpack(data).rest
+print(rest)  # b'\x03'
 
 # result and remaining data (rest):
-result, rest = fmt.unpack(data).unwrap()  # (1, 2), b'\x03'
-# or
+result, rest = fmt.unpack(data).unwrap()
+print(result, rest)  # (1, 2) b'\x03'
+
 (a, b), rest = fmt.unpack(data).unwrap()
+print(a, b, rest)  # 1 2 b'\x03'
+
 
 # expanded result and remaining data:
-a, b, rest = fmt.unpack(data).expand()  # 1, 2, b'\x03'
+a, b, rest = fmt.unpack(data).expand()
+print(a, b, rest)  # 1 2 b'\x03'
 ```
 
 You will find `.expand()` very useful in simplifying the syntax if you need to unpack individual results and keep working on the remaining data.
