@@ -1,0 +1,7 @@
+[project]
+name = "packman"
+version = "0.1.0"
+description = "Pythonic Binary Packing/Unpacking Like a Super Hero"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
