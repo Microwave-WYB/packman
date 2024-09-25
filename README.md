@@ -64,7 +64,6 @@ print(result, rest)  # (1, 2) b'\x03'
 (a, b), rest = fmt.unpack(data).unwrap()
 print(a, b, rest)  # 1 2 b'\x03'
 
-
 # expanded result and remaining data:
 a, b, rest = fmt.unpack(data).expand()
 print(a, b, rest)  # 1 2 b'\x03'
