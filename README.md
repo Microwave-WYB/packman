@@ -12,7 +12,7 @@ Minimum Python version: `3.12`
 
 This libarry uses the [PEP695](https://peps.python.org/pep-0695) type parameter syntax introduce in Python `3.12`.
 
-```
+```sh
 pip install packman
 ```
 
@@ -37,7 +37,7 @@ a, b, _ = fmt.unpack(data).expand()
 print(a, b)  # 1 2
 ```
 
-PackMan offers improved type safety: returned value from struct.unpack has type tuple[Any, ...], while PackMan's return value has the more specific type tuple[int, int, bytes], providing better type information and reducing the risk of type-related errors.
+PackMan offers improved type safety: returned value from struct.unpack has type `tuple[Any, ...]`, while PackMan's return value has the more specific type `tuple[int, int, bytes]`, providing better type information and reducing the risk of type-related errors.
 
 ![type_demo](/images/type_demo.png)
 
@@ -117,6 +117,14 @@ PackMan can be used to create efficient parsers for complex data structures:
 from packman import U8, Bytes
 from collections.abc import Iterator
 
+# Regular unpacking:
+def parse_ble_advertisement(data: bytes) -> Iterator[tuple[int, int, bytes]]:
+    while data:
+        length, data = U8().unpack(data).expand()
+        dtype, payload, data = (U8() + Bytes(length - 1)).unpack(data).expand()
+        yield length, dtype, payload
+
+# Dynamic format unpacking:
 def parse_ble_advertisement(data: bytes) -> Iterator[tuple[int, int, bytes]]:
     fmt = U8() | (lambda length: U8() + Bytes(length - 1))
     while data:
