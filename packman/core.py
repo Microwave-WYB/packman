@@ -57,7 +57,7 @@ class PackFormat[*T]:
         """
         Unpacks data into an UnpackResult object.
         >>> from packman import U8
-        >>> U8().unpack(b"\x01").unwrap()
+        >>> U8().unpack(b"\x01").expand()
         (1, b'')
         """
         fmt = f"{self.byteorder if self.byteorder != ByteOrder.NONE else ByteOrder.NATIVE_ALIGNED}{self.fmt}"
@@ -80,7 +80,7 @@ class PackFormat[*T]:
         >>> from packman import U8
         >>> (U8() + U8()).fmt
         'BB'
-        >>> (U8() + U8()).unpack(b"\x01\x02").unwrap()
+        >>> (U8() + U8()).unpack(b"\x01\x02").expand()
         (1, 2, b'')
         """
         new_format = copy(self)
@@ -98,37 +98,47 @@ class PackFormat[*T]:
         Chains two formats, where the second format is dynamically derived from the result of the previous format.
 
         >>> from packman import U8, Bytes
-        >>> U8().then(lambda length: Bytes(length)).unpack(b"\x01\x02").unwrap()
+        >>> U8().then(lambda length: Bytes(length)).unpack(b"\x01\x02").expand()
         (1, b'\\x02', b'')
         """
+        new_format = copy(self)
+        setattr(new_format, "first", self)
+        setattr(new_format, "mapper", mapper)
 
-        class Chainedformat(PackFormat):
-            def __init__(self, first: PackFormat, mapper: Callable):
-                super().__init__()
-                self.first = first
-                self.mapper = mapper
+        def new_unpack(self, data: bytes) -> UnpackResult[(*T, *U)]:
+            first_result = self.first.unpack(data)
+            second_format = self.mapper(*first_result.values)
+            second_result = second_format.unpack(first_result.rest)
+            return UnpackResult((*first_result.values, *second_result.values), second_result.rest)
 
-            def unpack(self, data: bytes) -> UnpackResult[(*T, *U)]:
-                first_result = self.first.unpack(data)
-                second_format = self.mapper(*first_result.values)
-                second_result = second_format.unpack(first_result.rest)
-                return UnpackResult(
-                    (*first_result.values, *second_result.values), second_result.rest
-                )
+        def new_pack(self, *values) -> bytes:
+            first_fmt = f"{self.first.byteorder}{self.first.fmt}"
+            first_size = struct.calcsize(first_fmt)
+            first_values = values[:first_size]
+            remaining_values = values[first_size:]
 
-            def pack(self, *values) -> bytes:
-                first_fmt = f"{self.first.byteorder}{self.first.fmt}"
-                first_size = struct.calcsize(first_fmt)
-                first_values = values[:first_size]
-                remaining_values = values[first_size:]
+            first_packed = self.first.pack(*first_values)
+            second_format = self.mapper(*first_values)
+            second_packed = second_format.pack(*remaining_values)
 
-                first_packed = self.first.pack(*first_values)
-                second_format = self.mapper(*first_values)
-                second_packed = second_format.pack(*remaining_values)
+            return first_packed + second_packed
 
-                return first_packed + second_packed
+        def new_add[*V](self, other: "PackFormat[*V]") -> "PackFormat[(*T, *V)]":
+            """
+            Chains this format with another format using a lambda function.
+            The second format is applied regardless of the first format's values.
 
-        return Chainedformat(self, mapper)
+            >>> from packman import U8
+            >>> (U8() + U8()).unpack(b"\x01\x02").expand()
+            (1, 2, b'')
+            """
+            return self.then(lambda *_: other)
+
+        new_format.unpack = new_unpack.__get__(new_format)
+        new_format.pack = new_pack.__get__(new_format)
+        new_format.__add__ = new_add.__get__(new_format)
+
+        return cast("PackFormat[(*T, *U)]", new_format)
 
     def __or__[*U](self, mapper: Callable[[*T], "PackFormat[*U]"]) -> "PackFormat[(*T, *U)]":
         """Shorthand for `then`"""
