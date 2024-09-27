@@ -1,5 +1,7 @@
 # Packman: Pythonic Binary Packing/Unpacking Like a Super Hero
 
+![intro](/images/intro.png)
+
 > [!WARNING]
 >
 > This tool is under heavy developments and should not be used in production code.
