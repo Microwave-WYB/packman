@@ -15,7 +15,8 @@ Minimum Python version: `3.12`
 This libarry uses the [PEP695](https://peps.python.org/pep-0695) type parameter syntax introduce in Python `3.12`.
 
 ```sh
-pip install packman
+# pip install packman  # TODO: publish to PyPI
+pip install git+https://github.com/Microwave-WYB/packman.git
 ```
 
 ## Basic Usage
