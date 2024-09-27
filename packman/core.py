@@ -4,6 +4,7 @@ from enum import StrEnum
 from functools import cached_property
 from typing import Callable, Literal, cast
 
+from packman.error import UnpackError
 from packman.result import UnpackResult
 
 type ByteOrderName = Literal["none", "native", "native_aligned", "little", "big", "network"]
@@ -67,9 +68,12 @@ class PackFormat[*T]:
         (1, b'')
         """
         fmt = f"{self.byteorder if self.byteorder != ByteOrder.NONE else ByteOrder.NATIVE_ALIGNED}{self.fmt}"
-        values = struct.unpack(fmt, data[: self.size])
-        rest = data[self.size :]
-        return UnpackResult(values, rest)
+        try:
+            values = struct.unpack(fmt, data[: self.size])
+            rest = data[self.size :]
+            return UnpackResult(values, rest)
+        except struct.error as e:
+            raise UnpackError(data, fmt, str(e)) from e
 
     def pack(self, *values: *T) -> bytes:
         """
@@ -114,8 +118,13 @@ class PackFormat[*T]:
         def new_unpack(self, data: bytes) -> UnpackResult[(*T, *U)]:
             first_result = self.first.unpack(data)
             second_format = self.mapper(*first_result.values)
-            second_result = second_format.unpack(first_result.rest)
-            return UnpackResult((*first_result.values, *second_result.values), second_result.rest)
+            try:
+                second_result = second_format.unpack(first_result.rest)
+                return UnpackResult(
+                    (*first_result.values, *second_result.values), second_result.rest
+                )
+            except struct.error as e:
+                raise UnpackError(data, self.first.fmt + second_format.fmt, str(e)) from e
 
         def new_pack(self, *values) -> bytes:
             first_fmt = f"{self.first.byteorder}{self.first.fmt}"
