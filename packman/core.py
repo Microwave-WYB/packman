@@ -33,7 +33,12 @@ class ByteOrder(StrEnum):
 
 
 class PackFormat[*T]:
-    """Basic binary packing format."""
+    """
+    Basic binary packing format.
+
+    With byteorder set to ByteOrder.NONE, the format will inherit previously defined byteorder, if any.
+    If not, it will default to ByteOrder.NATIVE_ALIGNED, which is the same as the struct module.
+    """
 
     fmt: str
     byteorder: ByteOrder = ByteOrder.NONE
@@ -42,10 +47,11 @@ class PackFormat[*T]:
         self,
         byteorder: ByteOrder | ByteOrderName = ByteOrder.NONE,
     ) -> None:
-        if isinstance(byteorder, ByteOrder):
-            self.byteorder = byteorder
-        else:
-            self.byteorder = ByteOrder.from_name(byteorder)
+        match byteorder:
+            case ByteOrder(b):
+                self.byteorder = b
+            case _:
+                self.byteorder = ByteOrder.from_name(byteorder)
 
     @cached_property
     def size(self) -> int:
