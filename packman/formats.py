@@ -57,6 +57,27 @@ class I64(PackFormat[int]):
         super().__init__(self.fmt, byteorder)
 
 
+class Usize(PackFormat[int]):
+    fmt = "N"
+
+    def __init__(self) -> None:
+        super().__init__(self.fmt, byteorder=ByteOrder.NATIVE_ALIGNED)
+
+
+class Isize(PackFormat[int]):
+    fmt = "n"
+
+    def __init__(self) -> None:
+        super().__init__(self.fmt, byteorder=ByteOrder.NATIVE_ALIGNED)
+
+
+class F16(PackFormat[float]):
+    fmt = "e"
+
+    def __init__(self, byteorder: ByteOrder | ByteOrderName = ByteOrder.NONE) -> None:
+        super().__init__(self.fmt, byteorder)
+
+
 class F32(PackFormat[float]):
     fmt = "f"
 
