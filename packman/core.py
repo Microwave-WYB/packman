@@ -1,17 +1,17 @@
 import struct
 from copy import copy
+from dataclasses import dataclass
 from enum import StrEnum
-from functools import cached_property
-from typing import Callable, Literal, cast
+from typing import Callable, Literal, Self, cast
 
 from packman.error import UnpackError
 from packman.result import UnpackResult
 
 type ByteOrderName = Literal["none", "native", "native_aligned", "little", "big", "network"]
+type ByteOrderSymbol = Literal["=", "@", "<", ">", "!"]
 
 
 class ByteOrder(StrEnum):
-    NONE = ""
     NATIVE = "="
     NATIVE_ALIGNED = "@"
     LITTLE = "<"
@@ -19,20 +19,22 @@ class ByteOrder(StrEnum):
     NETWORK = "!"
 
     @classmethod
-    def from_name(
+    def from_str(
         cls: type["ByteOrder"],
-        name: ByteOrderName,
+        value: ByteOrderName | ByteOrderSymbol,
     ) -> "ByteOrder":
+        if value in cls:
+            return ByteOrder(value)
         return {
-            "none": cls.NONE,
             "native": cls.NATIVE,
             "native_aligned": cls.NATIVE_ALIGNED,
             "little": cls.LITTLE,
             "big": cls.BIG,
             "network": cls.NETWORK,
-        }[name]
+        }[value]
 
 
+@dataclass
 class PackFormat[*T]:
     """
     Basic binary packing format.
@@ -41,35 +43,29 @@ class PackFormat[*T]:
     If not, it will default to ByteOrder.NATIVE_ALIGNED, which is the same as the struct module.
     """
 
-    def __init__(
+    fmt: str
+
+    @classmethod
+    def new(cls: type[Self], fmt: str) -> Self:  # Rusty!
+        return cls(fmt)
+
+    def unpack(
         self,
-        fmt: str,
-        byteorder: ByteOrder | ByteOrderName = ByteOrder.NONE,
-    ) -> None:
-        self.fmt = fmt
-        match byteorder:
-            case ByteOrder(b):
-                self.byteorder = b
-            case _:
-                self.byteorder = ByteOrder.from_name(byteorder)
-
-    @cached_property
-    def size(self) -> int:
-        return struct.calcsize(
-            f"{self.byteorder if self.byteorder != ByteOrder.NONE else ByteOrder.NATIVE_ALIGNED}{self.fmt}"
-        )
-
-    def unpack(self, data: bytes) -> UnpackResult[*T]:
+        data: bytes,
+        byteorder: ByteOrder | ByteOrderName | ByteOrderSymbol = ByteOrder.NATIVE_ALIGNED,
+    ) -> UnpackResult[*T]:
         """
         Unpacks data into an UnpackResult object.
         >>> from packman import U8
         >>> U8().unpack(b"\x01").expand()
         (1, b'')
         """
-        fmt = f"{self.byteorder if self.byteorder != ByteOrder.NONE else ByteOrder.NATIVE_ALIGNED}{self.fmt}"
+        byteorder = byteorder if isinstance(byteorder, ByteOrder) else ByteOrder.from_str(byteorder)
+        fmt = f"{byteorder}{self.fmt}"
+        size = struct.calcsize(fmt)
         try:
-            values = struct.unpack(fmt, data[: self.size])
-            rest = data[self.size :]
+            values = struct.unpack(fmt, data[:size])
+            rest = data[size:]
             return UnpackResult(values, rest)
         except struct.error as e:
             raise UnpackError(data, fmt, str(e)) from e
@@ -92,15 +88,7 @@ class PackFormat[*T]:
         >>> (U8() + U8()).unpack(b"\x01\x02").expand()
         (1, 2, b'')
         """
-        new_format = copy(self)
-        match new_format.byteorder, other.byteorder:
-            case _, ByteOrder.NONE:
-                new_format.fmt = f"{self.fmt}{other.fmt}"
-            case byteorder, new_byteorder if byteorder != new_byteorder:
-                new_format.fmt = f"{other.fmt}{new_byteorder}{self.fmt}"
-            case _, _:
-                new_format.fmt = f"{self.fmt}{other.fmt}"
-        return cast("PackFormat[(*T, *U)]", new_format)
+        return PackFormat[(*T, *U)](f"{self.fmt}{other.fmt}")
 
     def then[*U](self, mapper: Callable[[*T], "PackFormat[*U]"]) -> "PackFormat[(*T, *U)]":
         """
@@ -126,8 +114,7 @@ class PackFormat[*T]:
                 raise UnpackError(data, self.first.fmt + second_format.fmt, str(e)) from e
 
         def new_pack(self, *values) -> bytes:
-            first_fmt = f"{self.first.byteorder}{self.first.fmt}"
-            first_size = struct.calcsize(first_fmt)
+            first_size = struct.calcsize(self.first.fmt)
             first_values = values[:first_size]
             remaining_values = values[first_size:]
 
