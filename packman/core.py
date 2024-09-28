@@ -41,13 +41,12 @@ class PackFormat[*T]:
     If not, it will default to ByteOrder.NATIVE_ALIGNED, which is the same as the struct module.
     """
 
-    fmt: str
-    byteorder: ByteOrder = ByteOrder.NONE
-
     def __init__(
         self,
+        fmt: str,
         byteorder: ByteOrder | ByteOrderName = ByteOrder.NONE,
     ) -> None:
+        self.fmt = fmt
         match byteorder:
             case ByteOrder(b):
                 self.byteorder = b
