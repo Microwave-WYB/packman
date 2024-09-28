@@ -9,7 +9,7 @@ class UnpackError(Exception):
         self.fmt = fmt
         self.msg = (
             f"{msg}\n"
-            f"    Data   ({len(data)} bytes): {list(data)}\n"
-            f"    Format ({struct.calcsize(fmt)} bytes): {fmt}"
+            f"    Data\t({len(data)} bytes): {list(data)}\n"
+            f"    Format\t({struct.calcsize(fmt)} bytes): {fmt}"
         )
         super().__init__(self.msg)
