@@ -17,4 +17,4 @@ char = PackFormat[bytes]("c")
 
 
 def nbytes(length: int) -> PackFormat[bytes]:
-    return PackFormat[bytes](f"{length}c")
+    return PackFormat[bytes](f"{length}s")
