@@ -2,12 +2,12 @@ import struct
 from copy import copy
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Callable, Literal, Self, cast
+from typing import Callable, Literal, cast
 
 from packman.error import UnpackError
 from packman.result import UnpackResult
 
-type ByteOrderName = Literal["none", "native", "native_aligned", "little", "big", "network"]
+type ByteOrderName = Literal["native", "native_aligned", "little", "big", "network"]
 type ByteOrderSymbol = Literal["=", "@", "<", ">", "!"]
 
 
@@ -45,10 +45,6 @@ class PackFormat[*T]:
 
     fmt: str
 
-    @classmethod
-    def new(cls: type[Self], fmt: str) -> Self:  # Rusty!
-        return cls(fmt)
-
     def unpack(
         self,
         data: bytes,
@@ -70,14 +66,19 @@ class PackFormat[*T]:
         except struct.error as e:
             raise UnpackError(data, fmt, str(e)) from e
 
-    def pack(self, *values: *T) -> bytes:
+    def pack(
+        self,
+        *values: *T,
+        byteorder: ByteOrder | ByteOrderName | ByteOrderSymbol = ByteOrder.NATIVE_ALIGNED,
+    ) -> bytes:
         """
         Packs values into bytes.
         >>> from packman import U8
         >>> U8().pack(1).hex()
         '01'
         """
-        return struct.pack(self.fmt, *values)
+        fmt = f"{byteorder}{self.fmt}"
+        return struct.pack(fmt, *values)
 
     def __add__[*U](self, other: "PackFormat[*U]") -> "PackFormat[(*T, *U)]":
         """

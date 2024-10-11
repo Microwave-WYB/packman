@@ -1,5 +1,5 @@
 from .core import ByteOrder, PackFormat
-from .formats import F32, F64, I8, I16, I32, I64, U8, U16, U32, U64, Bytes
+from .formats import char, f16, f32, f64, i8, i16, i32, i64, nbytes, u8, u16, u32, u64
 from .result import UnpackResult
 
 __all__ = [
@@ -7,15 +7,17 @@ __all__ = [
     "PackFormat",
     "UnpackResult",
     "result",
-    "F32",
-    "F64",
-    "I8",
-    "I16",
-    "I32",
-    "I64",
-    "U8",
-    "U16",
-    "U32",
-    "U64",
-    "Bytes",
+    "char",
+    "f16",
+    "f32",
+    "f64",
+    "i8",
+    "i16",
+    "i32",
+    "i64",
+    "u8",
+    "u16",
+    "u32",
+    "u64",
+    "nbytes",
 ]
