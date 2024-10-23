@@ -1,19 +1,21 @@
+from typing import Final
+
 from packman.core import PackFormat
 
-u8 = PackFormat[int]("B")
-u16 = PackFormat[int]("H")
-u32 = PackFormat[int]("I")
-u64 = PackFormat[int]("Q")
-i8 = PackFormat[int]("b")
-i16 = PackFormat[int]("h")
-i32 = PackFormat[int]("i")
-i64 = PackFormat[int]("q")
-usize = PackFormat[int]("N")
-isize = PackFormat[int]("n")
-f16 = PackFormat[float]("e")
-f32 = PackFormat[float]("f")
-f64 = PackFormat[float]("d")
-char = PackFormat[bytes]("c")
+u8: Final[PackFormat[int]] = PackFormat[int]("B")
+u16: Final[PackFormat[int]] = PackFormat[int]("H")
+u32: Final[PackFormat[int]] = PackFormat[int]("I")
+u64: Final[PackFormat[int]] = PackFormat[int]("Q")
+i8: Final[PackFormat[int]] = PackFormat[int]("b")
+i16: Final[PackFormat[int]] = PackFormat[int]("h")
+i32: Final[PackFormat[int]] = PackFormat[int]("i")
+i64: Final[PackFormat[int]] = PackFormat[int]("q")
+usize: Final[PackFormat[int]] = PackFormat[int]("N")
+isize: Final[PackFormat[int]] = PackFormat[int]("n")
+f16: Final[PackFormat[float]] = PackFormat[float]("e")
+f32: Final[PackFormat[float]] = PackFormat[float]("f")
+f64: Final[PackFormat[float]] = PackFormat[float]("d")
+char: Final[PackFormat[bytes]] = PackFormat[bytes]("c")
 
 
 def nbytes(length: int) -> PackFormat[bytes]:
